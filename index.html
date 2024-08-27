@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DocuChat</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #000;
+            color: #fff;
+        }
+
+        .container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 400px;
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            z-index: 1;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            color: #00ffff;
+        }
+
+        .upload-section,
+        .chat-section {
+            margin-bottom: 20px;
+        }
+
+        .upload-label,
+        .question-label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: bold;
+            color: #00ffff;
+        }
+
+        input[type="file"],
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #00ffff;
+            border-radius: 4px;
+            background-color: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+
+        button {
+            padding: 10px 15px;
+            background-color: #00ffff;
+            color: #000;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #009999;
+        }
+
+        #upload-message {
+            color: green;
+            margin-top: 10px;
+        }
+
+        #chat-output {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            border: 1px solid #00ffff;
+            min-height: 100px;
+            color: #fff;
+        }
+
+        #loading {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            color: #00ffff;
+            z-index: 2;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="threejs-container"></div>
+    <div class="container">
+        <h1>DocuChat</h1>
+        <div class="upload-section">
+            <label for="pdf-upload" class="upload-label">Upload PDF:</label>
+            <input type="file" id="pdf-upload" accept="application/pdf">
+            <button id="upload-button">Submit</button>
+            <p id="upload-message"></p>
+        </div>
+
+        <div class="chat-section">
+            <label for="question-input" class="question-label">Ask a Question:</label>
+            <input type="text" id="question-input" placeholder="Type your question here...">
+            <button id="ask-button">Ask</button>
+            <div id="chat-output"></div>
+        </div>
+    </div>
+
+    <div id="loading">Loading...</div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Three.js Scene Setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.getElementById('threejs-container').appendChild(renderer.domElement);
+
+        // Lighting
+        const light = new THREE.PointLight(0xffffff, 1, 100);
+        light.position.set(50, 50, 50);
+        scene.add(light);
+
+        // 3D Object
+        const geometry = new THREE.TorusKnotGeometry(10, 3, 100, 16);
+        const material = new THREE.MeshStandardMaterial({ color: 0x00ffff });
+        const torusKnot = new THREE.Mesh(geometry, material);
+        scene.add(torusKnot);
+
+        camera.position.z = 30;
+
+        function animate() {
+            requestAnimationFrame(animate);
+            torusKnot.rotation.x += 0.01;
+            torusKnot.rotation.y += 0.01;
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        function showLoading() {
+            document.getElementById('loading').style.display = 'block';
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        document.getElementById('upload-button').addEventListener('click', function () {
+            showLoading();
+
+            const fileInput = document.getElementById('pdf-upload');
+            const file = fileInput.files[0];
+            const formData = new FormData();
+
+            if (!file) {
+                alert("Please select a PDF to upload.");
+                hideLoading();
+                return;
+            }
+
+            formData.append('file', file);
+
+            fetch('http://127.0.0.1:8000/upload/', {
+                method: 'POST',
+                body: formData
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.message) {
+                        document.getElementById('upload-message').textContent = data.message;
+                        document.getElementById('upload-message').style.color = 'green';
+                    } else {
+                        throw new Error('Upload failed');
+                    }
+                    hideLoading();
+                })
+                .catch(error => {
+                    document.getElementById('upload-message').textContent = "Error: " + error.message;
+                    document.getElementById('upload-message').style.color = 'red';
+                    hideLoading();
+                });
+        });
+
+        document.getElementById('ask-button').addEventListener('click', function () {
+            showLoading();
+
+            const questionInput = document.getElementById('question-input');
+            const question = questionInput.value.trim();
+
+            if (!question) {
+                alert("Please enter a question.");
+                hideLoading();
+                return;
+            }
+
+            fetch('http://127.0.0.1:8000/ask/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ question: question })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.answer) {
+                        const chatOutput = document.getElementById('chat-output');
+                        const answerElement = document.createElement('p');
+                        answerElement.textContent = data.answer;
+                        chatOutput.appendChild(answerElement);
+                    } else {
+                        throw new Error('Failed to retrieve answer');
+                    }
+                    hideLoading();
+                })
+                .catch(error => {
+                    const chatOutput = document.getElementById('chat-output');
+                    chatOutput.textContent = "Error: " + error.message;
+                    hideLoading();
+                });
+        });
+    </script>
+</body>
+
+</html>
