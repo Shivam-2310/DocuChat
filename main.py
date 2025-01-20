@@ -8,7 +8,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Adjust this to the actual origin of your frontend for more security
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -25,15 +25,12 @@ class Query(BaseModel):
 async def upload_pdf(file: UploadFile = File(...)):
     global retriever, llm
     try:
-        # Save the uploaded file temporarily
         file_location = f"temp_{file.filename}"
         with open(file_location, "wb+") as file_object:
             file_object.write(file.file.read())
 
-        # Initialize the pipeline with the uploaded PDF
         retriever, llm = initialize_pipeline(file_location)
 
-        # Delete the temporary file after processing
         os.remove(file_location)
 
         return {"message": "PDF processed successfully. You can now ask questions."}

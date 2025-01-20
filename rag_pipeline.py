@@ -1,4 +1,4 @@
-import fitz  # PyMuPDF
+import fitz
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import OllamaEmbeddings
 from langchain_community.vectorstores import Chroma
@@ -16,21 +16,17 @@ def extract_text_from_pdf(pdf_path):
     return text
 
 def initialize_pipeline(pdf_path: str):
-    # Extract text directly from the PDF
     raw_text = extract_text_from_pdf(pdf_path)
 
-    # Split the document into chunks
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=100, chunk_overlap=10)
     chunks = text_splitter.split_text(raw_text)
 
-    # Create vector store
     vector_db = Chroma.from_texts(
         texts=chunks,
         embedding=OllamaEmbeddings(model="nomic-embed-text", show_progress=True),
         collection_name="local-rag"
     )
 
-    # Setup retriever
     QUERY_PROMPT = PromptTemplate(
         input_variables=["question"],
         template="""You are an AI language model assistant. Your task is to generate five
@@ -41,7 +37,7 @@ def initialize_pipeline(pdf_path: str):
         Original question: {question}""",
     )
 
-    local_model="llama3.1:latest"
+    local_model="llama3.2:1b"
     llm = ChatOllama(model=local_model)
     retriever = MultiQueryRetriever.from_llm(
         vector_db.as_retriever(),
@@ -53,16 +49,13 @@ def initialize_pipeline(pdf_path: str):
 
 
 def generate_answer(retriever, llm, question: str):
-    # Define the RAG prompt template
     template = """Answer the question based ONLY on the following context.
     {context}
     Question: {question}
     """
 
-    # Create a ChatPromptTemplate from the template
     prompt = ChatPromptTemplate.from_template(template)
 
-    # Create a chain of operations
     chain = (
         {"context": retriever, "question": RunnablePassthrough()}
         | prompt
@@ -70,6 +63,5 @@ def generate_answer(retriever, llm, question: str):
         | StrOutputParser()
     )
 
-    # Invoke the chain with the question, expecting a dictionary as input
     inputs = {"question": question}
     return chain.invoke(inputs)
