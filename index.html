@@ -159,6 +159,40 @@
             0%, 80%, 100% { transform: scale(0); }
             40% { transform: scale(1); }
         }
+
+        .upload-success {
+            color: #00ffff;
+            font-size: 1.2em;
+            text-align: center;
+            padding: 10px;
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .popup-message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #00ffff;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+            z-index: 1000;
+            animation: fadeInOut 2s ease-in-out forwards;
+        }
+
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
+            20% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
+        }
     </style>
 </head>
 <body>
@@ -208,79 +242,98 @@
         }
         animate();
 
-function showLoading() {
-    const chatMessages = document.getElementById('chat-messages');
-    const loadingMessage = document.createElement('div');
-    loadingMessage.className = 'message ai-message loading';
-    loadingMessage.innerHTML = `
-        <div class="loading-dots">
-            <span></span>
-            <span></span>
-            <span></span>
-        </div>
-    `;
-    loadingMessage.id = 'loading-message';
-    chatMessages.appendChild(loadingMessage);
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-}
+        function showLoading() {
+            const chatMessages = document.getElementById('chat-messages');
+            const loadingMessage = document.createElement('div');
+            loadingMessage.className = 'message ai-message loading';
+            loadingMessage.innerHTML = `
+                <div class="loading-dots">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            `;
+            loadingMessage.id = 'loading-message';
+            chatMessages.appendChild(loadingMessage);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
 
-function hideLoading() {
-    const loadingMessage = document.getElementById('loading-message');
-    if (loadingMessage) {
-        loadingMessage.remove();
-    }
-}
-function showUploadLoading() {
-    const uploadMessage = document.getElementById('upload-message');
-    uploadMessage.innerHTML = `
-        <div class="loading-dots" style="justify-content: center">
-            <span></span>
-            <span></span>
-            <span></span>
-        </div>
-        <div style="color: #00ffff; margin-top: 5px;">Processing PDF...</div>
-    `;
-}
-function hideChatLoading() {
-    const loadingMessage = document.getElementById('loading-message');
-    if (loadingMessage) {
-        loadingMessage.remove();
-    }
-}
-function hideUploadLoading() {
-    const uploadMessage = document.getElementById('upload-message');
-    uploadMessage.innerHTML = '';
-}
+        function hideLoading() {
+            const loadingMessage = document.getElementById('loading-message');
+            if (loadingMessage) {
+                loadingMessage.remove();
+            }
+        }
 
-document.getElementById('upload-button').addEventListener('click', function() {
-    const fileInput = document.getElementById('pdf-upload');
-    const file = fileInput.files[0];
-    const formData = new FormData();
+        function showUploadLoading() {
+            const uploadMessage = document.getElementById('upload-message');
+            uploadMessage.innerHTML = `
+                <div style="color: #00ffff; margin-bottom: 10px; font-size: 1.2em;">
+                    Your PDF is being read by an AI<span style="font-size: 1.4em;">😎</span>
+                </div>
+                <div class="loading-dots" style="justify-content: center">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            `;
+        }
 
-    if (!file) {
-        alert("Please select a PDF to upload.");
-        return;
-    }
+        function hideUploadLoading() {
+            const uploadMessage = document.getElementById('upload-message');
+            uploadMessage.innerHTML = '';
+        }
 
-    showUploadLoading();
-    formData.append('file', file);
+        document.getElementById('upload-button').addEventListener('click', function() {
+            const fileInput = document.getElementById('pdf-upload');
+            const file = fileInput.files[0];
+            const formData = new FormData();
 
-    fetch('http://127.0.0.1:8000/upload/', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        document.getElementById('upload-message').textContent = data.message;
-        document.getElementById('upload-message').style.color = 'green';
-        hideUploadLoading();
-    })
-    .catch(error => {
-        document.getElementById('upload-message').textContent = "Error: " + error.message;
-        document.getElementById('upload-message').style.color = 'red';
-        hideUploadLoading();
-    });
-});
+            if (!file) {
+                alert("Please select a PDF to upload.");
+                return;
+            }
+
+            showUploadLoading();
+            formData.append('file', file);
+
+            fetch('http://127.0.0.1:8000/upload/', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Create popup
+                const popup = document.createElement('div');
+                popup.className = 'popup-message';
+                popup.innerHTML = `
+                    <div style="font-size: 1.4em; text-align: center;">
+                        You can now chat with your PDF<span style="font-size: 1.2em;">😊</span>
+                    </div>
+                `;
+                document.body.appendChild(popup);
+
+                // Remove popup after animation
+                setTimeout(() => {
+                    popup.remove();
+                }, 2000);
+
+                // Update upload message
+                document.getElementById('upload-message').innerHTML = `
+                    <div class="upload-success">
+                        <span style="font-size: 1.4em;">🎉</span>
+                        You can now ask any questions related to the Document!
+                        <span style="font-size: 1.4em;">🤖</span>
+                    </div>
+                `;
+                hideUploadLoading();
+            })
+            .catch(error => {
+                document.getElementById('upload-message').textContent = "Error: " + error.message;
+                document.getElementById('upload-message').style.color = 'red';
+                hideUploadLoading();
+            });
+        });
 
         document.getElementById('ask-button').addEventListener('click', async function() {
             const questionInput = document.getElementById('question-input');

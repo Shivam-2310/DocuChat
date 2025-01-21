@@ -37,7 +37,7 @@ def initialize_pipeline(pdf_path: str):
         Original question: {question}""",
     )
 
-    local_model="llama3.2:1b"
+    local_model="deepseek-r1:1.5b"
     llm = ChatOllama(model=local_model)
     retriever = MultiQueryRetriever.from_llm(
         vector_db.as_retriever(),
